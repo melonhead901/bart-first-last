@@ -104,7 +104,7 @@ def key_replacement(key: Tuple[str, str]) -> str:
     elif headsign == "San Francisco International Airport":
         headsign = "Yellow SB (SFO)"
     elif headsign == "Millbrae (Caltrain Transfer Platform)":
-        headsign = "Yellow SB (Millbrae)"
+        headsign = "Yellow SB (Millbrae only)"
     elif headsign == "San Francisco Int'l Airport/Millbrae":
         headsign = "Yellow SB (SFO/Millbrae)"
     elif headsign == "OAK Airport / Berryessa/North San Jose":
@@ -114,13 +114,11 @@ def key_replacement(key: Tuple[str, str]) -> str:
 
 def print_first_last_times(trips: List[Tuple[str, str, Optional[str]]]):
     first_last = first_last_times(trips)
-    replace_map = {key_replacement(key): v for key, v in first_last.items()}
-    keys = list(replace_map.keys())
-    keys.sort()
+    display_map = {key_replacement(key): v for key, v in first_last.items()}
 
-    for key in keys:
+    for key in sorted(display_map):
         # Expect each value in replace_map to be a tuple of (first, last) times
-        first, last = replace_map[key]
+        first, last = display_map[key]
         print(f"{key}: {first} - {last}")
 
 if __name__ == "__main__":
