@@ -86,29 +86,23 @@ def first_last_times(trips: List[Tuple[str, str, Optional[str]]]) -> Dict[Tuple[
 
 def key_replacement(key: Tuple[str, str]) -> str:
     service_id, headsign = key
-    if service_id == "2025_08_11-SA-MVS-Saturday-000":
-        service_id = "Saturday"
-    elif service_id == "2025_08_11-SU-MVS-Sunday-000":
-        service_id = "Sunday"
-    elif service_id == "2025_08_11-DX-MVS-Weekday-003":
-        service_id = "Weekday"
-
-    if headsign == "Richmond":
-        headsign = "Red/Orange NB (Richmond)"
-    elif headsign == "SF / SFO Airport / Millbrae":
-        headsign = "Red SB (Millbrae)"
-    elif headsign == "Antioch":
-        headsign = "Yellow NB (Antioch)"
-    elif headsign == "Pittsburg / Bay Point":
-        headsign = "Yellow NB (Pts/BayPt)"
-    elif headsign == "San Francisco International Airport":
-        headsign = "Yellow SB (SFO)"
-    elif headsign == "Millbrae (Caltrain Transfer Platform)":
-        headsign = "Yellow SB (Millbrae only)"
-    elif headsign == "San Francisco Int'l Airport/Millbrae":
-        headsign = "Yellow SB (SFO/Millbrae)"
-    elif headsign == "OAK Airport / Berryessa/North San Jose":
-        headsign = "Orange SB (Berryessa)"
+    service_map = {
+        "2025_08_11-SA-MVS-Saturday-000": "Saturday",
+        "2025_08_11-SU-MVS-Sunday-000": "Sunday",
+        "2025_08_11-DX-MVS-Weekday-003": "Weekday",
+    }
+    headsign_map = {
+        "Richmond": "Red/Orange NB (Richmond)",
+        "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
+        "Antioch": "Yellow NB (Antioch)",
+        "Pittsburg / Bay Point": "Yellow NB (Pts/BayPt)",
+        "San Francisco International Airport": "Yellow SB (SFO)",
+        "Millbrae (Caltrain Transfer Platform)": "Yellow SB (Millbrae only)",
+        "San Francisco Int'l Airport/Millbrae": "Yellow SB (SFO/Millbrae)",
+        "OAK Airport / Berryessa/North San Jose": "Orange SB (Berryessa)",
+    }
+    service_id = service_map.get(service_id, service_id)
+    headsign = headsign_map.get(headsign, headsign)
     
     return f"{service_id} - {headsign}"
 
