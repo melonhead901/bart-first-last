@@ -65,10 +65,10 @@ def trips_dict() -> Dict[str, Dict[str, str]]:
         return trips
 
 
-def first_last_times(trips: List[Tuple[str, str, Optional[str]]]) -> dict:
+def first_last_times(trips: List[Tuple[str, str, Optional[str]]]) -> Dict[Tuple[str, str], Tuple[str, str]]:
     first_map = {}
     for time, headsign, service_id in trips:
-        key = (service_id, headsign) if service_id else headsign
+        key = (service_id, headsign)
         if key not in first_map:
             first_map[key] = time
         else:
@@ -76,13 +76,13 @@ def first_last_times(trips: List[Tuple[str, str, Optional[str]]]) -> dict:
 
     last_map = {}
     for time, headsign, service_id in trips:
-        key = (service_id, headsign) if service_id else headsign
+        key = (service_id, headsign)
         if key not in last_map:
             last_map[key] = time
         else:
             last_map[key] = max(last_map[key], time)
 
-    return {headsign: (first_map[headsign], last_map[headsign]) for headsign in first_map}
+    return {key: (first_map[key], last_map[key]) for key in first_map}
 
 def key_replacement(key: Tuple[str, str]) -> str:
     service_id, headsign = key
@@ -92,15 +92,36 @@ def key_replacement(key: Tuple[str, str]) -> str:
         service_id = "Sunday"
     elif service_id == "2025_08_11-DX-MVS-Weekday-003":
         service_id = "Weekday"
+
+    if headsign == "Richmond":
+        headsign = "Red/Orange NB (Richmond)"
+    elif headsign == "SF / SFO Airport / Millbrae":
+        headsign = "Red SB (Millbrae)"
+    elif headsign == "Antioch":
+        headsign = "Yellow NB (Antioch)"
+    elif headsign == "Pittsburg / Bay Point":
+        headsign = "Yellow NB (Pts/BayPt)"
+    elif headsign == "San Francisco International Airport":
+        headsign = "Yellow SB (SFO)"
+    elif headsign == "Millbrae (Caltrain Transfer Platform)":
+        headsign = "Yellow SB (Millbrae)"
+    elif headsign == "San Francisco Int'l Airport/Millbrae":
+        headsign = "Yellow SB (SFO/Millbrae)"
+    elif headsign == "OAK Airport / Berryessa/North San Jose":
+        headsign = "Orange SB (Berryessa)"
+    
     return f"{service_id} - {headsign}"
 
 def print_first_last_times(trips: List[Tuple[str, str, Optional[str]]]):
     first_last = first_last_times(trips)
-    keys = sorted(first_last.keys())
+    replace_map = {key_replacement(key): v for key, v in first_last.items()}
+    keys = list(replace_map.keys())
+    keys.sort()
+
     for key in keys:
-        first, last = first_last[key]
-        replaced_key = key_replacement(key) if isinstance(key, tuple) else key
-        print(f"{replaced_key}: {first} - {last}")
+        # Expect each value in replace_map to be a tuple of (first, last) times
+        first, last = replace_map[key]
+        print(f"{key}: {first} - {last}")
 
 if __name__ == "__main__":
     print_first_last_times(trips_for_stop_ids(
