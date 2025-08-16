@@ -6,9 +6,9 @@ STOPS = "stops.txt"
 STOP_TIMES = "stop_times.txt"
 TRIPS = "trips.txt"
 
-def get_19th_street_station_ids() -> List[str]:
+def get_station_ids(station_name: str) -> List[str]:
     """
-    Returns the stop IDs for the 19th Street stop.
+    Returns the stop IDs for the given station name.
     """
     stop_ids = []
     with open(f"{os.environ["BART_DATA_ROOT"]}/{STOPS}", "r")  as f:
@@ -16,7 +16,7 @@ def get_19th_street_station_ids() -> List[str]:
         for row in reader:
             stop_id = row[0]
             stop_name = row[2]
-            if "19th Street Oakland" in stop_name:
+            if station_name in stop_name:
                 stop_ids.append(stop_id)
     return stop_ids
 
@@ -116,7 +116,8 @@ def print_first_last_times(trips: List[Tuple[str, str, Optional[str]]]):
         print(f"{key}: {first} - {last}")
 
 if __name__ == "__main__":
+    station_name = "19th Street Oakland"
     print_first_last_times(trips_for_stop_ids(
-        station_ids=get_19th_street_station_ids(),
+        station_ids=get_station_ids(station_name),
         trips_dict=trips_dict()))
     #print(trips_dict())
