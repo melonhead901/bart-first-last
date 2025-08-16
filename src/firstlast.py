@@ -94,14 +94,23 @@ def key_replacement(key: Tuple[str, str]) -> str:
     headsign_map = {
         "Richmond": "Red/Orange NB (Richmond)",
         "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
+        "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
+        "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
+        "SFO Airport / Millbrae": "Red SB (Millbrae)",
         "Antioch": "Yellow NB (Antioch)",
         "Pittsburg / Bay Point": "Yellow NB (Pts/BayPt)",
         "San Francisco International Airport": "Yellow SB (SFO)",
         "Millbrae (Caltrain Transfer Platform)": "Yellow SB (Millbrae only)",
         "San Francisco Int'l Airport/Millbrae": "Yellow SB (SFO/Millbrae)",
         "OAK Airport / Berryessa/North San Jose": "Orange SB (Berryessa)",
+        "SF / OAK Airport / Berryessa": "Green EB (Berryessa)",
+        "SF / OAK Airport / Dublin/Pleasanton": "Blue EB (Dublin/Plsntn)",
+        "SF / Daly City": "Blue/Green WB (Daly City)",
     }
     service_id = service_map.get(service_id, service_id)
+    # If headsign is not in the map, center it with asterisks so it stands out.
+    if headsign not in headsign_map.keys():
+        headsign = headsign.center(50, '*')
     headsign = headsign_map.get(headsign, headsign)
     
     return f"{service_id} - {headsign}"
@@ -117,6 +126,7 @@ def print_first_last_times(trips: List[Tuple[str, str, Optional[str]]]):
 
 if __name__ == "__main__":
     station_name = "19th Street Oakland"
+    station_name = "Civic Center"
     print_first_last_times(trips_for_stop_ids(
         station_ids=get_station_ids(station_name),
         trips_dict=trips_dict()))
