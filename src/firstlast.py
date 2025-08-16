@@ -3,9 +3,9 @@ from typing import List, Tuple, Optional, Dict
 import os
 import csv
 
-STOPS = "stops.txt"
-STOP_TIMES = "stop_times.txt"
-TRIPS = "trips.txt"
+STOPS_FILE_NAME = "stops.txt"
+STOP_TIMES_FILE_NAME = "stop_times.txt"
+TRIPS_FILE_NAME = "trips.txt"
 
 HEADSIGN_MAP = {
     # Red Line
@@ -47,9 +47,11 @@ HEADSIGN_MAP = {
     "Coliseum": "Grey OB (Coliseum)",
     "Oakland Airport": "Grey IB (OAK)",
 
-    # Mixed or orphaned headsings not in trips.txt
+    # Mixed trips not in trips.txt but present in stop_times.txt
     "SF / Daly City": "Blue/Green WB (Daly City)",
     "Richmond": "Red/Orange NB (Richmond)",
+
+    # Other headsigns only in stop_times.txt
     "OAK Airport / Dublin/Pleasanton": "Blue EB (Dublin/Plsntn)",
     "San Francisco / BayPoint": "Yellow NB (Pts/BayPt)",
     "San Francisco / Pittsburg/Bay Point": "Yellow NB (Pts/BayPt)",
@@ -62,7 +64,7 @@ def get_station_ids(station_name: str) -> List[str]:
     Returns the stop IDs for the given station name.
     """
     stop_ids = []
-    with open(f"{os.environ["BART_DATA_ROOT"]}/{STOPS}", "r")  as f:
+    with open(f"{os.environ["BART_DATA_ROOT"]}/{STOPS_FILE_NAME}", "r")  as f:
         reader = csv.reader(f)
         next(reader) # Skip header row
         for row in reader:
@@ -81,7 +83,7 @@ def get_stop_times(
         station_ids: Optional[List[str]],
         trips_dict: Dict[str, 'TripInfo'] = None) -> List['StopTimeInfo']:
     trips = []
-    with open(f"{os.environ["BART_DATA_ROOT"]}/{STOP_TIMES}", "r")  as f:
+    with open(f"{os.environ["BART_DATA_ROOT"]}/{STOP_TIMES_FILE_NAME}", "r")  as f:
         reader = csv.reader(f)
         next(reader) # Skip header row
         for row in reader:
@@ -89,15 +91,10 @@ def get_stop_times(
             stop_id = row[3]
             if station_ids is None or stop_id in station_ids:
                 trip_id = row[0]
-                arrival_time = row[1]
                 departure_time = row[2]
-                stop_sequence = row[4]
                 stop_headsign = row[5]
                 if trips_dict and not stop_headsign:
                     stop_headsign = trips_dict[trip_id].trip_headsign
-                pickup_type = row[6]
-                drop_off_type = row[7]
-                shape_distance_traveled = row[8]
 
                 if trips_dict:
                     service_id = trips_dict[trip_id].service_id
@@ -110,7 +107,7 @@ def get_stop_times(
 TripInfo = namedtuple("TripInfo", ["service_id", "trip_id", "trip_headsign"])
 
 def trips_dict() -> Dict[str, TripInfo]:
-    with open(f"{os.environ['BART_DATA_ROOT']}/{TRIPS}", "r") as f:
+    with open(f"{os.environ['BART_DATA_ROOT']}/{TRIPS_FILE_NAME}", "r") as f:
         reader = csv.reader(f)
         next(reader) # Skip header row
         trips = {}
@@ -151,9 +148,19 @@ def first_last_times(
 def key_replacement(key: Tuple[str, str]) -> str:
     service_id, headsign = key
     service_map = {
+        # Mainline
         "2025_08_11-SA-MVS-Saturday-000": "Saturday",
         "2025_08_11-SU-MVS-Sunday-000": "Sunday",
         "2025_08_11-DX-MVS-Weekday-003": "Weekday",
+
+        # OAK Shuttle
+        # Yes, it really is 6 separate services for the same route.
+        "2025_08_11-DX19-Weekday-001": "Weekday",
+        "2025_08_11-DX20-Weekday-001": "Weekday",
+        "2025_08_11-SA19-Saturday-001": "Saturday",
+        "2025_08_11-SA20-Saturday-001": "Saturday",
+        "2025_08_11-SU19-Sunday-001": "Sunday",
+        "2025_08_11-SU20-Sunday-001": "Sunday",
     }
 
     service_id = service_map.get(service_id, service_id)
