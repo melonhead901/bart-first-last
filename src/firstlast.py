@@ -1,7 +1,7 @@
+from collections import namedtuple
 from typing import List, Tuple, Optional, Dict
 import os
 import csv
-from collections import namedtuple
 
 STOPS = "stops.txt"
 STOP_TIMES = "stop_times.txt"
@@ -74,9 +74,12 @@ def get_station_ids(station_name: str) -> List[str]:
 
 #print(get_19th_street_station_ids())
 
-StopTimeInfo = namedtuple("TripForStopInfo", ["departure_time", "stop_headsign", "service_id"])
+StopTimeInfo = namedtuple(
+    "TripForStopInfo", ["departure_time", "stop_headsign", "service_id"])
 
-def get_stop_times(station_ids: Optional[List[str]], trips_dict: Dict[str, 'TripInfo'] = None) -> List['StopTimeInfo']:
+def get_stop_times(
+        station_ids: Optional[List[str]],
+        trips_dict: Dict[str, 'TripInfo'] = None) -> List['StopTimeInfo']:
     trips = []
     with open(f"{os.environ["BART_DATA_ROOT"]}/{STOP_TIMES}", "r")  as f:
         reader = csv.reader(f)
@@ -123,7 +126,8 @@ def trips_dict() -> Dict[str, TripInfo]:
         return trips
 
 
-def first_last_times(trips: List['StopTimeInfo']) -> Dict[Tuple[str, str], Tuple[str, str]]:
+def first_last_times(
+        trips: List['StopTimeInfo']) -> Dict[Tuple[str, str], Tuple[str, str]]:
     first_map = {}
     for stop_time_info in trips:
         key = (stop_time_info.service_id, stop_time_info.stop_headsign)
@@ -181,7 +185,8 @@ def test_headsign_names() -> bool:
     )
     headsigns_from_stop_times = get_stop_times(None, all_trips)
     unique_headsigns.update(
-        (stop_time.stop_headsign, "STOP_TIMES") for stop_time in headsigns_from_stop_times
+        (stop_time.stop_headsign, "STOP_TIMES")
+        for stop_time in headsigns_from_stop_times
     )
 
     success = True
