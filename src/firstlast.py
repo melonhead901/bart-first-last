@@ -74,14 +74,33 @@ def get_station_ids(station_name: str) -> List[str]:
                 stop_ids.append(stop_id)
     return stop_ids
 
-#print(get_19th_street_station_ids())
+
+TripInfo = namedtuple("TripInfo", ["service_id", "trip_id", "trip_headsign"])
+
+
+def trips_dict() -> Dict[str, TripInfo]:
+    with open(f"{os.environ['BART_DATA_ROOT']}/{TRIPS_FILE_NAME}", "r") as f:
+        reader = csv.reader(f)
+        next(reader) # Skip header row
+        trips = {}
+        for row in reader:
+            trip_id = row[2]
+            service_id = row[1]
+            trip_headsign = row[3]
+            trips[trip_id] = TripInfo(
+                service_id=service_id,
+                trip_id=trip_id,
+                trip_headsign=trip_headsign,
+            )
+        return trips
 
 StopTimeInfo = namedtuple(
     "TripForStopInfo", ["departure_time", "stop_headsign", "service_id"])
 
+
 def get_stop_times(
         station_ids: Optional[List[str]],
-        trips_dict: Dict[str, 'TripInfo'] = None) -> List['StopTimeInfo']:
+        trips_dict: Optional[Dict[str, TripInfo]] = None) -> List[StopTimeInfo]:
     trips = []
     with open(f"{os.environ["BART_DATA_ROOT"]}/{STOP_TIMES_FILE_NAME}", "r")  as f:
         reader = csv.reader(f)
@@ -102,44 +121,29 @@ def get_stop_times(
                     service_id = None
 
                 trips.append(StopTimeInfo(departure_time, stop_headsign, service_id))
+
     return trips
 
-TripInfo = namedtuple("TripInfo", ["service_id", "trip_id", "trip_headsign"])
+FirstLastKey = namedtuple("FirstLastKey", ["service_id", "stop_headsign"])
 
-def trips_dict() -> Dict[str, TripInfo]:
-    with open(f"{os.environ['BART_DATA_ROOT']}/{TRIPS_FILE_NAME}", "r") as f:
-        reader = csv.reader(f)
-        next(reader) # Skip header row
-        trips = {}
-        for row in reader:
-            trip_id = row[2]
-            service_id = row[1]
-            trip_headsign = row[3]
-            trips[trip_id] = TripInfo(
-                service_id=service_id,
-                trip_id=trip_id,
-                trip_headsign=trip_headsign,
-            )
-        return trips
+FirstLastTimes = namedtuple("FirstLastTimes", ["first", "last"])
 
 
-def first_last_times(
-        trips: List['StopTimeInfo']) -> Dict[Tuple[str, str], Tuple[str, str]]:
+def first_last_times(trips: List[StopTimeInfo]) -> Dict[FirstLastKey, FirstLastTimes]:
     first_map = {}
     last_map = {}
     for stop_time_info in trips:
-        key = (stop_time_info.service_id, stop_time_info.stop_headsign)
+        key = FirstLastKey(stop_time_info.service_id, stop_time_info.stop_headsign)
         time = stop_time_info.departure_time
         if time < first_map.get(key, "99:99:99"):
             first_map[key] = time
         if time > last_map.get(key, "00:00:00"):
             last_map[key] = time
 
+    return {key: FirstLastTimes(first_map[key], last_map[key]) for key in first_map}
 
-    return {key: (first_map[key], last_map[key]) for key in first_map}
-
-def key_replacement(key: Tuple[str, str]) -> str:
-    service_id, headsign = key
+def key_replacement(key: FirstLastKey) -> str:
+    service_id, headsign = key.service_id, key.stop_headsign
     service_map = {
         # Mainline
         "2025_08_11-SA-MVS-Saturday-000": "Saturday",
@@ -164,15 +168,14 @@ def key_replacement(key: Tuple[str, str]) -> str:
 
     return f"{service_id} - {headsign}"
 
-def print_first_last_times(trips: List['StopTimeInfo']) -> None:
+def print_first_last_times(trips: List[StopTimeInfo]) -> None:
     first_last = first_last_times(trips)
     display_map = {key_replacement(key): v for key, v in first_last.items()}
     max_key_length = max(len(key) for key in display_map.keys())
 
     for key in sorted(display_map):
         # Expect each value in replace_map to be a tuple of (first, last) times.
-        first, last = display_map[key]
-        print(f"{key.ljust(max_key_length)}: {first} - {last}")
+        print(f"{key.ljust(max_key_length)}: {display_map[key].first} - {display_map[key].last}")
 
 
 def test_headsign_names() -> bool:
