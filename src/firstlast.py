@@ -39,10 +39,10 @@ HEADSIGN_MAP = {
     "OAK Airport / SF / Daly City": "Blue WB (Daly City)",
     # Appears to not be in stop_times.txt but is listed in trips.txt
     "Bay Fair": "Blue WB (Bay Fair only)",
-    
+
     # Green Line
     "SF / OAK Airport / Berryessa": "Green EB (Berryessa)",
-    
+
     # Grey Line
     "Coliseum": "Grey OB (Coliseum)",
     "Oakland Airport": "Grey IB (OAK)",
@@ -100,7 +100,7 @@ def get_stop_times(station_ids: Optional[List[str]], trips_dict: Dict[str, 'Trip
                     service_id = trips_dict[trip_id].service_id
                 else:
                     service_id = None
-                
+
                 trips.append(StopTimeInfo(departure_time, stop_headsign, service_id))
     return trips
 
@@ -157,7 +157,7 @@ def key_replacement(key: Tuple[str, str]) -> str:
     if headsign not in HEADSIGN_MAP.keys():
         headsign = headsign.center(50, '*')
     headsign = HEADSIGN_MAP.get(headsign, headsign)
-    
+
     return f"{service_id} - {headsign}"
 
 def print_first_last_times(trips: List['StopTimeInfo']) -> None:
@@ -183,7 +183,7 @@ def test_headsign_names() -> bool:
     unique_headsigns.update(
         (stop_time.stop_headsign, "STOP_TIMES") for stop_time in headsigns_from_stop_times
     )
-    
+
     success = True
     for headsign, source in unique_headsigns:
         if headsign not in HEADSIGN_MAP:
@@ -192,15 +192,13 @@ def test_headsign_names() -> bool:
     return success
 
 
-TEST_HEADSIGNS = True 
+TEST_HEADSIGNS = True
 if __name__ == "__main__":
     if TEST_HEADSIGNS:
         success = test_headsign_names()
         if not success:
             print("Some headsigns are missing mappings in HEADSIGN_MAP.")
             exit(1)
-        else:
-            print("All headsigns have mappings in HEADSIGN_MAP.")
     station_name = "19th Street"
     print_first_last_times(get_stop_times(
         station_ids=get_station_ids(station_name),
