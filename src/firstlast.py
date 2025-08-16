@@ -126,22 +126,15 @@ def trips_dict() -> Dict[str, TripInfo]:
 def first_last_times(
         trips: List['StopTimeInfo']) -> Dict[Tuple[str, str], Tuple[str, str]]:
     first_map = {}
-    for stop_time_info in trips:
-        key = (stop_time_info.service_id, stop_time_info.stop_headsign)
-        time = stop_time_info.departure_time
-        if key not in first_map:
-            first_map[key] = time
-        else:
-            first_map[key] = min(first_map[key], time)
-
     last_map = {}
     for stop_time_info in trips:
         key = (stop_time_info.service_id, stop_time_info.stop_headsign)
         time = stop_time_info.departure_time
-        if key not in last_map:
+        if time < first_map.get(key, "99:99:99"):
+            first_map[key] = time
+        if time > last_map.get(key, "00:00:00"):
             last_map[key] = time
-        else:
-            last_map[key] = max(last_map[key], time)
+
 
     return {key: (first_map[key], last_map[key]) for key in first_map}
 
@@ -174,11 +167,12 @@ def key_replacement(key: Tuple[str, str]) -> str:
 def print_first_last_times(trips: List['StopTimeInfo']) -> None:
     first_last = first_last_times(trips)
     display_map = {key_replacement(key): v for key, v in first_last.items()}
+    max_key_length = max(len(key) for key in display_map.keys())
 
     for key in sorted(display_map):
-        # Expect each value in replace_map to be a tuple of (first, last) times
+        # Expect each value in replace_map to be a tuple of (first, last) times.
         first, last = display_map[key]
-        print(f"{key}: {first} - {last}")
+        print(f"{key.ljust(max_key_length)}: {first} - {last}")
 
 
 def test_headsign_names() -> bool:
