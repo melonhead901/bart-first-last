@@ -1,10 +1,61 @@
 from typing import List, Tuple, Optional, Dict
 import os
 import csv
+from collections import namedtuple
 
 STOPS = "stops.txt"
 STOP_TIMES = "stop_times.txt"
 TRIPS = "trips.txt"
+
+HEADSIGN_MAP = {
+    # Red Line
+    "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
+    "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
+    "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
+    "SFO Airport / Millbrae": "Red SB (Millbrae)",
+    "SFO / SF / Richmond": "Red NB (Richmond)",
+
+    # Orange Line
+    "Berryessa": "Orange SB (Berryessa)",
+    # Appears to not be in stop_times.txt but is listed in trips.txt
+    "Berryessa/North San Jose": "Orange SB (Berryessa)",
+    "OAK Airport / Berryessa/North San Jose": "Orange SB (Berryessa)",
+    "OAK Airport / Richmond": "Orange NB (Richmond)",
+
+    # Yellow Line
+    "Antioch": "Yellow NB (Antioch)",
+    "SFO / SF / Antioch": "Yellow NB (Antioch)",
+    "San Francisco / Antioch": "Yellow NB (Antioch)",
+    "Pittsburg / Bay Point": "Yellow NB (Pts/BayPt)",
+    "SFO / SF / Pittsburg/Bay Point": "Yellow NB (Pts/BayPt)",
+    "SF / Pittsburg/Bay Point": "Yellow NB (Pts/BayPt)",
+    "San Francisco International Airport": "Yellow SB (SFO)",
+    "Millbrae (Caltrain Transfer Platform)": "Yellow SB (Millbrae only)",
+    "San Francisco Int'l Airport/Millbrae": "Yellow SB (SFO/Millbrae)",
+
+    # Blue Line
+    "Dublin/Pleasanton": "Blue EB (Dublin/Plsntn)",
+    "SF / OAK Airport / Dublin/Pleasanton": "Blue EB (Dublin/Plsntn)",
+    "OAK Airport / SF / Daly City": "Blue WB (Daly City)",
+    # Appears to not be in stop_times.txt but is listed in trips.txt
+    "Bay Fair": "Blue WB (Bay Fair only)",
+    
+    # Green Line
+    "SF / OAK Airport / Berryessa": "Green EB (Berryessa)",
+    
+    # Grey Line
+    "Coliseum": "Grey OB (Coliseum)",
+    "Oakland Airport": "Grey IB (OAK)",
+
+    # Mixed or orphaned headsings not in trips.txt
+    "SF / Daly City": "Blue/Green WB (Daly City)",
+    "Richmond": "Red/Orange NB (Richmond)",
+    "OAK Airport / Dublin/Pleasanton": "Blue EB (Dublin/Plsntn)",
+    "San Francisco / BayPoint": "Yellow NB (Pts/BayPt)",
+    "San Francisco / Pittsburg/Bay Point": "Yellow NB (Pts/BayPt)",
+    "San Francisco / Richmond": "Red NB (Richmond)",
+    "OAK Airport / Berryessa": "Green EB (Berryessa)",
+}
 
 def get_station_ids(station_name: str) -> List[str]:
     """
@@ -13,6 +64,7 @@ def get_station_ids(station_name: str) -> List[str]:
     stop_ids = []
     with open(f"{os.environ["BART_DATA_ROOT"]}/{STOPS}", "r")  as f:
         reader = csv.reader(f)
+        next(reader) # Skip header row
         for row in reader:
             stop_id = row[0]
             stop_name = row[2]
@@ -22,61 +74,69 @@ def get_station_ids(station_name: str) -> List[str]:
 
 #print(get_19th_street_station_ids())
 
-def trips_for_stop_ids(station_ids: List[str], trips_dict=None) -> List[Tuple[str, str, Optional[str]]]:
+StopTimeInfo = namedtuple("TripForStopInfo", ["departure_time", "stop_headsign", "service_id"])
+
+def get_stop_times(station_ids: Optional[List[str]], trips_dict: Dict[str, 'TripInfo'] = None) -> List['StopTimeInfo']:
     trips = []
     with open(f"{os.environ["BART_DATA_ROOT"]}/{STOP_TIMES}", "r")  as f:
         reader = csv.reader(f)
+        next(reader) # Skip header row
         for row in reader:
             # trip_id,arrival_time,departure_time,stop_id,stop_sequence,stop_headsign,pickup_type,drop_off_type,shape_distance_traveled
             stop_id = row[3]
-            if stop_id in station_ids:
+            if station_ids is None or stop_id in station_ids:
                 trip_id = row[0]
                 arrival_time = row[1]
                 departure_time = row[2]
                 stop_sequence = row[4]
                 stop_headsign = row[5]
                 if trips_dict and not stop_headsign:
-                    stop_headsign = trips_dict[trip_id]["trip_headsign"]
+                    stop_headsign = trips_dict[trip_id].trip_headsign
                 pickup_type = row[6]
                 drop_off_type = row[7]
                 shape_distance_traveled = row[8]
 
                 if trips_dict:
-                    service_id = trips_dict[trip_id]["service_id"]
+                    service_id = trips_dict[trip_id].service_id
                 else:
                     service_id = None
                 
-                trips.append((departure_time, stop_headsign, service_id))
+                trips.append(StopTimeInfo(departure_time, stop_headsign, service_id))
     return trips
 
-def trips_dict() -> Dict[str, Dict[str, str]]:
-    with open(f"{os.environ["BART_DATA_ROOT"]}/{TRIPS}", "r")  as f:
+TripInfo = namedtuple("TripInfo", ["service_id", "trip_id", "trip_headsign"])
+
+def trips_dict() -> Dict[str, TripInfo]:
+    with open(f"{os.environ['BART_DATA_ROOT']}/{TRIPS}", "r") as f:
         reader = csv.reader(f)
+        next(reader) # Skip header row
         trips = {}
         for row in reader:
             trip_id = row[2]
             service_id = row[1]
             trip_headsign = row[3]
-            trips[trip_id] = {
-                "service_id": service_id,
-                "trip_id": trip_id,
-                "trip_headsign": trip_headsign,
-            }
+            trips[trip_id] = TripInfo(
+                service_id=service_id,
+                trip_id=trip_id,
+                trip_headsign=trip_headsign,
+            )
         return trips
 
 
-def first_last_times(trips: List[Tuple[str, str, Optional[str]]]) -> Dict[Tuple[str, str], Tuple[str, str]]:
+def first_last_times(trips: List['StopTimeInfo']) -> Dict[Tuple[str, str], Tuple[str, str]]:
     first_map = {}
-    for time, headsign, service_id in trips:
-        key = (service_id, headsign)
+    for stop_time_info in trips:
+        key = (stop_time_info.service_id, stop_time_info.stop_headsign)
+        time = stop_time_info.departure_time
         if key not in first_map:
             first_map[key] = time
         else:
             first_map[key] = min(first_map[key], time)
 
     last_map = {}
-    for time, headsign, service_id in trips:
-        key = (service_id, headsign)
+    for stop_time_info in trips:
+        key = (stop_time_info.service_id, stop_time_info.stop_headsign)
+        time = stop_time_info.departure_time
         if key not in last_map:
             last_map[key] = time
         else:
@@ -91,31 +151,16 @@ def key_replacement(key: Tuple[str, str]) -> str:
         "2025_08_11-SU-MVS-Sunday-000": "Sunday",
         "2025_08_11-DX-MVS-Weekday-003": "Weekday",
     }
-    headsign_map = {
-        "Richmond": "Red/Orange NB (Richmond)",
-        "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
-        "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
-        "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
-        "SFO Airport / Millbrae": "Red SB (Millbrae)",
-        "Antioch": "Yellow NB (Antioch)",
-        "Pittsburg / Bay Point": "Yellow NB (Pts/BayPt)",
-        "San Francisco International Airport": "Yellow SB (SFO)",
-        "Millbrae (Caltrain Transfer Platform)": "Yellow SB (Millbrae only)",
-        "San Francisco Int'l Airport/Millbrae": "Yellow SB (SFO/Millbrae)",
-        "OAK Airport / Berryessa/North San Jose": "Orange SB (Berryessa)",
-        "SF / OAK Airport / Berryessa": "Green EB (Berryessa)",
-        "SF / OAK Airport / Dublin/Pleasanton": "Blue EB (Dublin/Plsntn)",
-        "SF / Daly City": "Blue/Green WB (Daly City)",
-    }
+
     service_id = service_map.get(service_id, service_id)
     # If headsign is not in the map, center it with asterisks so it stands out.
-    if headsign not in headsign_map.keys():
+    if headsign not in HEADSIGN_MAP.keys():
         headsign = headsign.center(50, '*')
-    headsign = headsign_map.get(headsign, headsign)
+    headsign = HEADSIGN_MAP.get(headsign, headsign)
     
     return f"{service_id} - {headsign}"
 
-def print_first_last_times(trips: List[Tuple[str, str, Optional[str]]]):
+def print_first_last_times(trips: List['StopTimeInfo']) -> None:
     first_last = first_last_times(trips)
     display_map = {key_replacement(key): v for key, v in first_last.items()}
 
@@ -124,10 +169,40 @@ def print_first_last_times(trips: List[Tuple[str, str, Optional[str]]]):
         first, last = display_map[key]
         print(f"{key}: {first} - {last}")
 
+
+def test_headsign_names() -> bool:
+    """
+    Tests that all headsigns in the trips.txt file have a mapping in HEADSIGN_MAP.
+    """
+    all_trips = trips_dict()
+    unique_headsigns = set()
+    unique_headsigns.update(
+        (trip.trip_headsign, "TRIP") for trip in all_trips.values()
+    )
+    headsigns_from_stop_times = get_stop_times(None, all_trips)
+    unique_headsigns.update(
+        (stop_time.stop_headsign, "STOP_TIMES") for stop_time in headsigns_from_stop_times
+    )
+    
+    success = True
+    for headsign, source in unique_headsigns:
+        if headsign not in HEADSIGN_MAP:
+            success = False
+            print(f"Missing headsign mapping for: {headsign}, source: {source}")
+    return success
+
+
+TEST_HEADSIGNS = True 
 if __name__ == "__main__":
-    station_name = "19th Street Oakland"
-    station_name = "Civic Center"
-    print_first_last_times(trips_for_stop_ids(
+    if TEST_HEADSIGNS:
+        success = test_headsign_names()
+        if not success:
+            print("Some headsigns are missing mappings in HEADSIGN_MAP.")
+            exit(1)
+        else:
+            print("All headsigns have mappings in HEADSIGN_MAP.")
+    station_name = "19th Street"
+    print_first_last_times(get_stop_times(
         station_ids=get_station_ids(station_name),
         trips_dict=trips_dict()))
     #print(trips_dict())
