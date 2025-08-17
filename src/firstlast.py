@@ -30,8 +30,8 @@ HEADSIGN_MAP = {
     "SFO / SF / Pittsburg/Bay Point": "Yellow NB (Pts/BayPt)",
     "SF / Pittsburg/Bay Point": "Yellow NB (Pts/BayPt)",
     "San Francisco International Airport": "Yellow SB (SFO)",
-    "Millbrae (Caltrain Transfer Platform)": "Yellow SB (Millbrae only)",
-    "San Francisco Int'l Airport/Millbrae": "Yellow SB (SFO/Millbrae)",
+    "Millbrae (Caltrain Transfer Platform)": "Yellow SB (Millbrae, No SFO)",
+    "San Francisco Int'l Airport/Millbrae": "Yellow SB (Millbrae)",
 
     # Blue Line
     "Dublin/Pleasanton": "Blue EB (Dublin/Plsntn)",
@@ -73,7 +73,6 @@ def get_station_ids(station_name: str) -> List[str]:
             if station_name in stop_name:
                 stop_ids.append(stop_id)
     return stop_ids
-
 
 TripInfo = namedtuple("TripInfo", ["service_id", "trip_id", "trip_headsign"])
 
@@ -165,8 +164,15 @@ def key_replacement(key: FirstLastKey) -> str:
     if headsign not in HEADSIGN_MAP.keys():
         headsign = headsign.center(50, '*')
     headsign = HEADSIGN_MAP.get(headsign, headsign)
+    headsign = replaced_headsign_destination_only(headsign)
 
     return f"{service_id} - {headsign}"
+
+def replaced_headsign_destination_only(replaced_headsign: str) -> str:
+    # Yellow NB (Pts/BayPt) -> Pts/BayPt
+    start = replaced_headsign.find('(')
+    end = replaced_headsign.find(')')
+    return replaced_headsign[start + 1:end].strip() if start != -1 and end != -1 else replaced_headsign
 
 def print_first_last_times(trips: List[StopTimeInfo]) -> None:
     first_last = first_last_times(trips)
@@ -177,6 +183,65 @@ def print_first_last_times(trips: List[StopTimeInfo]) -> None:
         # Expect each value in replace_map to be a tuple of (first, last) times.
         print(f"{key.ljust(max_key_length)}: {display_map[key].first} - {display_map[key].last}")
 
+def print_first_last_times_table(trips: List[StopTimeInfo]) -> None:
+    first_last = first_last_times(trips)
+    display_map = {key_replacement(key): v for key, v in first_last.items()}
+    destinations = set(map(lambda key: key.split(' - ')[1], display_map.keys()))
+    services = set(map(lambda key: key.split(' - ')[0], display_map.keys()))
+
+    print_first_or_last((
+        "First Trains", lambda x: x.first, "opened before", min), display_map, destinations, services)
+    print()
+    print_first_or_last((
+        "Last Trains", lambda x: x.last, "closed after", max), display_map, destinations, services)
+
+def print_first_or_last(
+        print_specs: Tuple[str, callable],
+        display_map: Dict[str, FirstLastTimes] ,
+        destinations: List[str],
+        services:  List[str]) -> None:
+    first_col_len = max(len(dest) for dest in destinations)
+    time_len = 8  # Length of time strings (HH:MM:SS)
+    header_str = "| " + "Destinations".ljust(first_col_len) + " | "
+    service_order = ["Weekday", "Saturday", "Sunday"]
+    sorted_services = sorted(services, key=service_order.index)
+    for service in sorted_services:
+        header_str += service.ljust(time_len)
+        header_str += " | "
+
+    title, extraction_func, station_action, agg_func = print_specs
+    last = agg_func(map(lambda x: extraction_func(x) , display_map.values()))
+    print(
+        f"*** {title} *** station {station_action}: {last}"
+        .center(len(header_str.strip())))
+
+    def print_dashes():
+        print("-" * (len(header_str.strip())))
+    print_dashes()
+    print(header_str.strip())
+    print_dashes()
+
+    destination_order = [
+        "Richmond",
+        "Pts/BayPt", "Antioch",
+        "OAK", "Coliseum", "Bay Fair",
+        "Dublin/Plsntn",
+        "Berryessa/North San Jose", "Berryessa",
+        "Millbrae, No SFO", "Millbrae", "SFO",
+        "Daly City",
+    ]
+    for destination in sorted(destinations, key=destination_order.index):
+        print(f"| {destination.ljust(first_col_len)} | ", end='')
+        for service in sorted_services:
+            # Create a key for the display_map
+            key = f"{service} - {destination}"
+            if key in display_map:
+                print(f"{extraction_func(display_map[key]).ljust(time_len)} | ", end='')
+            else:
+                print(" " * time_len + " | ", end='')
+        print()
+
+    print_dashes()
 
 def test_headsign_names() -> bool:
     """
@@ -208,8 +273,9 @@ if __name__ == "__main__":
         if not success:
             print("Some headsigns are missing mappings in HEADSIGN_MAP.")
             exit(1)
-    station_name = "19th Street"
-    print_first_last_times(get_stop_times(
+    station_name = "19th"
+    print_first_last_times_table(get_stop_times(
+    #print_first_last_times(get_stop_times(
         station_ids=get_station_ids(station_name),
         trips_dict=trips_dict()))
     #print(trips_dict())
