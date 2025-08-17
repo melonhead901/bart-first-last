@@ -10,8 +10,6 @@ TRIPS_FILE_NAME = "trips.txt"
 HEADSIGN_MAP = {
     # Red Line
     "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
-    "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
-    "SF / SFO Airport / Millbrae": "Red SB (Millbrae)",
     "SFO Airport / Millbrae": "Red SB (Millbrae)",
     "SFO / SF / Richmond": "Red NB (Richmond)",
 
@@ -31,7 +29,7 @@ HEADSIGN_MAP = {
     "SF / Pittsburg/Bay Point": "Yellow NB (Pts/BayPt)",
     "San Francisco International Airport": "Yellow SB (SFO)",
     "Millbrae (Caltrain Transfer Platform)": "Yellow SB (Millbrae, No SFO)",
-    "San Francisco Int'l Airport/Millbrae": "Yellow SB (Millbrae)",
+    "San Francisco Int'l Airport/Millbrae": "Yellow SB (SFO/Millbrae)",
 
     # Blue Line
     "Dublin/Pleasanton": "Blue EB (Dublin/Plsntn)",
@@ -227,7 +225,7 @@ def print_first_or_last(
         "OAK", "Coliseum", "Bay Fair",
         "Dublin/Plsntn",
         "Berryessa/North San Jose", "Berryessa",
-        "Millbrae, No SFO", "Millbrae", "SFO",
+        "Millbrae, No SFO", "Millbrae", "SFO/Millbrae", "SFO",
         "Daly City",
     ]
     for destination in sorted(destinations, key=destination_order.index):
