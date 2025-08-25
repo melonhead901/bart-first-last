@@ -261,12 +261,33 @@ def print_first_last_times_db(bartdb: BartDb, station_name: str) -> None:
 
     stop_ids = get_station_ids(station_name)
     first_stops = bartdb.first_stop_time(stop_ids)
-    print(first_stops)
+    for i, row in enumerate(first_stops):
+        departure_time, service_id, headsign, route_short_name = row
+        service_id = get_label_for_service_id(service_id)
+        route_short_name_map = {
+            "Green-S": "Green-W",
+            "Green-N": "Green-E",
+            "Blue-S": "Blue-W",
+            "Blue-N": "Blue-E",
+            "Grey-N": "Grey-I",
+            "Grey-S": "Grey-O"
+        }
+        route_short_name = route_short_name_map.get(route_short_name, route_short_name)
+        first_stops[i] = (departure_time, service_id, headsign, route_short_name)
+    service_order = ["Saturday", "Sunday", "Weekday"]
+    route_order = ["Red", "Orange", "Yellow", "Green", "Blue", "Grey"]
+    def sort_key(row):
+        departure_time, service_id, headsign, route_short_name = row
+        service_index = service_order.index(service_id)
+        portion_before_dash = route_short_name.split("-")[0]
+        route_index = route_order.index(portion_before_dash)
+        return (service_index, route_index, departure_time)
+    first_stops.sort(key=sort_key)
     for row in first_stops:
         departure_time, service_id, headsign, route_short_name = row
         str = " ".join([
             departure_time,
-            get_label_for_service_id(service_id).ljust(10),
+            service_id.ljust(10),
             route_short_name.ljust(10),
             headsign.ljust(30)])
         print(str)
@@ -411,7 +432,7 @@ if __name__ == "__main__":
 
     bartdb = BartDb()
     bartdb.connect()
-    print_first_last_times_db(bartdb, "19th St")
+    print_first_last_times_db(bartdb, "Coliseum")
     bartdb.disconnect()
     #test_daly_city_service()
     #print(trips_dict())
