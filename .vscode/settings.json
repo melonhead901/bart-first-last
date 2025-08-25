@@ -2,10 +2,11 @@
     "python-envs.pythonProjects": [
         {
             "path": "src",
-            "envManager": "ms-python.python:venv",
-            "packageManager": "ms-python.python:pip"
+            "envManager": "ms-python.python:conda",
+            "packageManager": "ms-python.python:conda"
         }
     ],
     "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "github.copilot.nextEditSuggestions.enabled": true
 }
