@@ -1,6 +1,8 @@
 import sqlite3
 import csv
 import os
+from typing import List
+from typing import Tuple
 
 class BartDb:
     DB_PATH = f'{os.environ["BART_DATA_ROOT"]}/bartdb.db'
@@ -148,6 +150,23 @@ class BartDb:
     def print_5_joined_trips(self):
         for row in self.joined_stop_times():
             print(row)
+
+    def first_last_trains_per_station_headsign(self, station_ids: List[str], service_id_pattern: str ) -> List[Tuple[str, str, str, str, str, str]]:
+        self.cursor.execute(
+            f"""SELECT stops.stop_name, MIN(departure_time), MAX(departure_time), service_id, COALESCE(stop_headsign, trip_headsign) AS headsign, route_short_name
+            FROM stop_times
+            JOIN stops ON stop_times.stop_id = stops.stop_id
+            JOIN trips ON stop_times.trip_id = trips.trip_id
+            JOIN routes ON trips.route_id = routes.route_id
+            WHERE 1=1
+            AND service_id LIKE {repr(service_id_pattern)}
+            GROUP BY route_short_name
+            ORDER BY route_short_name
+            """
+        )
+            # WHERE stops.stop_id IN ({', '.join(repr(x) for x in station_ids)})
+        rows = self.cursor.fetchall()
+        return rows
 
     def first_stop_time(self, stop_ids):
         self.cursor.execute(

@@ -39,7 +39,6 @@ HEADSIGN_MAP = {
     # Blue Line
     "Dublin/Pleasanton": "Blue EB (Dublin/Plsntn)",
     "SF / OAK Airport / Dublin/Pleasanton": "Blue EB (Dublin/Plsntn)",
-    # Appears to not be in stop_times.txt but is listed in trips.txt
     "Bay Fair": "Blue WB (Bay Fair only)",
 
     # Ambiguous
@@ -208,11 +207,11 @@ def get_line_for_headsign(headsign: str, station_name: Optional[str] = None) -> 
     headsign = HEADSIGN_MAP.get(headsign, headsign)
     if headsign in AMBIGUOUS:
         if headsign == DALY_CITY_AMBIGUOUS:
-            if station_name in [""]:
+            if station_name in ["Hayward", "South Hayward", "Union City", "Fremont", "Warm Springs/South Fremont", "Milpitas", "Berryessa/North San Jose"]:
                 headsign = "Green WB (Daly City)"
-            elif station_name == "Castro Valley":
+            elif station_name in ["Castro Valley", "West Dublin/Pleasanton", "Dublin/Pleasanton"]:
                 headsign = "Blue WB (Daly City)"
-            elif station_name == "Bay Fair":
+            else:
                 headsign = "Blue/Green WB (Daly City)"
     # headsign = replaced_headsign_destination_only(headsign)
     return headsign
@@ -258,24 +257,17 @@ def print_system_first_last_times() -> None:
     pass
 
 def print_first_last_times_db(bartdb: BartDb, station_name: str) -> None:
-
     stop_ids = get_station_ids(station_name)
     first_stops = bartdb.first_stop_time(stop_ids)
+
     for i, row in enumerate(first_stops):
         departure_time, service_id, headsign, route_short_name = row
         service_id = get_label_for_service_id(service_id)
-        route_short_name_map = {
-            "Green-S": "Green-W",
-            "Green-N": "Green-E",
-            "Blue-S": "Blue-W",
-            "Blue-N": "Blue-E",
-            "Grey-N": "Grey-I",
-            "Grey-S": "Grey-O"
-        }
-        route_short_name = route_short_name_map.get(route_short_name, route_short_name)
+        route_short_name = map_route_short_name(route_short_name)
         first_stops[i] = (departure_time, service_id, headsign, route_short_name)
     service_order = ["Saturday", "Sunday", "Weekday"]
     route_order = ["Red", "Orange", "Yellow", "Green", "Blue", "Grey"]
+
     def sort_key(row):
         departure_time, service_id, headsign, route_short_name = row
         service_index = service_order.index(service_id)
@@ -283,6 +275,7 @@ def print_first_last_times_db(bartdb: BartDb, station_name: str) -> None:
         route_index = route_order.index(portion_before_dash)
         return (service_index, route_index, departure_time)
     first_stops.sort(key=sort_key)
+
     for row in first_stops:
         departure_time, service_id, headsign, route_short_name = row
         str = " ".join([
@@ -292,10 +285,30 @@ def print_first_last_times_db(bartdb: BartDb, station_name: str) -> None:
             headsign.ljust(30)])
         print(str)
 
-def print_first_last_times_table(trips: List[StopTimeInfo]) -> None:
+def map_route_short_name(route_short_name):
+    route_short_name_map = {
+            "Green-S": "Green-W",
+            "Green-N": "Green-E",
+            "Blue-S": "Blue-W",
+            "Blue-N": "Blue-E",
+            "Grey-N": "Grey-I",
+            "Grey-S": "Grey-O"
+        }
+    route_short_name = route_short_name_map.get(route_short_name, route_short_name)
+    return route_short_name
+
+def print_first_last_train_per_station(bart_db: BartDb, station_name: str) -> None:
+    first_last_trains = bart_db.first_last_trains_per_station_headsign(
+        station_ids=get_station_ids(station_name),
+        service_id_pattern="%Weekday%"
+    )
+    for train in first_last_trains:
+        print(train)
+
+def print_first_last_times_table(trips: List[StopTimeInfo], station_name: Optional[str] = None) -> None:
     first_last = first_last_times(trips)
-    display_map = {f"{get_label_for_service_id(service_id)} - {get_line_for_headsign(headsign)}": v
-                   for (service_id, headsign), v in first_last.items()}
+    display_map = {f"{get_label_for_service_id(service_id)} - {get_line_for_headsign(headsign, station_name)}":
+                   v for (service_id, headsign), v in first_last.items()}
     destinations = set(map(lambda key: key.split(' - ')[1], display_map.keys()))
     services = set(map(lambda key: key.split(' - ')[0], display_map.keys()))
 
@@ -377,9 +390,8 @@ def test_headsign_names() -> bool:
 
 
 def print_first_last_for_station(station_name: str) -> None:
-    print_first_last_times_table(get_stop_times(
-        target_station_ids=get_station_ids(station_name),
-        trips_dict=trips_dict()))
+    stop_times = get_stop_times(get_station_ids(station_name), trips_dict())
+    print_first_last_times_table(stop_times, station_name)
 
 TEST_HEADSIGNS = True
 
@@ -405,8 +417,6 @@ def test_daly_city_service() -> None:
 
 def all_stops_for(station_name: str) -> List[StopTimeInfo]:
     weekday_trips = trips_dict()
-    print('a')
-    print(len(weekday_trips))
     stop_times = get_stop_times(get_station_ids(station_name), weekday_trips)
     def print_stop_time_info(stop_time_info: StopTimeInfo) -> str:
         return (
@@ -423,6 +433,7 @@ if __name__ == "__main__":
         if not success:
             print("Some headsigns are missing mappings in HEADSIGN_MAP.")
             exit(1)
+    test_daly_city_service()
     # print_system_first_last_times()
     #print_first_last_for_station("Daly City")
 
@@ -430,9 +441,13 @@ if __name__ == "__main__":
     #for stop_time_info in all_stops_for(station_name="Hayward"):
         #print(stop_time_info)
 
-    bartdb = BartDb()
-    bartdb.connect()
-    print_first_last_times_db(bartdb, "Coliseum")
-    bartdb.disconnect()
+    #bartdb = BartDb()
+    #bartdb.connect()
+    #print_first_last_train_per_station(bartdb, "19th")
+    trips_dict = trips_dict()
+    station_name = "Bay Fair"
+    stop_times = get_stop_times(get_station_ids(station_name), trips_dict)
+    print_first_last_times_table(stop_times, station_name)
+    #bartdb.disconnect()
     #test_daly_city_service()
     #print(trips_dict())
